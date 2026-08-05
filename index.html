@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TFLN Power Budget</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17211c;
+      --muted: #657068;
+      --line: #d9dfda;
+      --surface: #f4f6f3;
+      --panel: #ffffff;
+      --accent: #087f5b;
+      --accent-soft: #def3e9;
+      --laser: #c76818;
+      --laser-soft: #fff3e6;
+      --tfln: #087f5b;
+      --tfln-soft: #e8f5ef;
+      --si: #356aa8;
+      --si-soft: #edf4fc;
+      --danger: #b42318;
+      --shadow: 0 18px 50px rgba(22, 40, 30, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background: var(--surface);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button, input, select { font: inherit; }
+
+    .app-shell {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 28px 32px 40px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 7px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(26px, 4vw, 42px);
+      line-height: 1.05;
+      font-weight: 720;
+    }
+
+    .assumption {
+      max-width: 440px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      text-align: right;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(310px, 390px) minmax(0, 1fr);
+      gap: 32px;
+      padding-top: 28px;
+    }
+
+    .controls {
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .mode-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding: 6px;
+      background: #edf1ed;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .mode-switch button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 650;
+      transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .mode-switch button.active {
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 2px 10px rgba(30, 50, 38, 0.08);
+    }
+
+    .control-body { padding: 22px; }
+
+    .section-label {
+      margin: 0 0 13px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .primary-input {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 86px;
+      gap: 8px;
+      margin-bottom: 26px;
+    }
+
+    .field { margin-bottom: 16px; }
+
+    .parameter-group {
+      --module-color: var(--accent);
+      margin-bottom: 12px;
+      padding: 14px 14px 1px;
+      border-left: 3px solid var(--module-color);
+      border-radius: 0 5px 5px 0;
+    }
+
+    .parameter-group.laser {
+      --module-color: var(--laser);
+      background: var(--laser-soft);
+    }
+
+    .parameter-group.tfln {
+      --module-color: var(--tfln);
+      background: var(--tfln-soft);
+    }
+
+    .parameter-group.si {
+      --module-color: var(--si);
+      background: var(--si-soft);
+    }
+
+    .parameter-group-title {
+      margin: 0 0 12px;
+      color: var(--module-color);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .parameter-group input:focus {
+      border-color: var(--module-color);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--module-color) 14%, transparent);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      color: #48534c;
+      font-size: 13px;
+      font-weight: 620;
+    }
+
+    input, select {
+      width: 100%;
+      height: 43px;
+      border: 1px solid #cbd3cd;
+      border-radius: 5px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    input { padding: 0 12px; }
+    select { padding: 0 10px; cursor: pointer; }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.12);
+    }
+
+    .divider {
+      height: 1px;
+      margin: 22px 0;
+      background: var(--line);
+    }
+
+    .reset-button {
+      width: 100%;
+      height: 42px;
+      margin-top: 5px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+      color: #47524b;
+      cursor: pointer;
+      font-weight: 620;
+    }
+
+    .reset-button:hover { background: #f7f9f7; }
+
+    .results { min-width: 0; }
+
+    .headline-result {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 22px;
+      padding: 4px 0 25px;
+    }
+
+    .result-kicker {
+      margin: 0 0 5px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .result-value {
+      margin: 0;
+      color: var(--accent);
+      font-size: clamp(34px, 5.5vw, 64px);
+      line-height: 1;
+      font-weight: 730;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .result-dbm {
+      flex: 0 0 auto;
+      padding-bottom: 5px;
+      color: var(--muted);
+      font-size: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .signal-map {
+      display: grid;
+      grid-template-columns: 1fr 3fr 2fr;
+      gap: 6px;
+      padding: 7px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .system-module {
+      --module-color: var(--accent);
+      min-width: 0;
+      padding: 16px 13px 19px;
+      border-top: 3px solid var(--module-color);
+    }
+
+    .system-module.laser {
+      --module-color: var(--laser);
+      background: var(--laser-soft);
+    }
+
+    .system-module.tfln {
+      --module-color: var(--tfln);
+      background: var(--tfln-soft);
+    }
+
+    .system-module.si {
+      --module-color: var(--si);
+      background: var(--si-soft);
+    }
+
+    .module-title {
+      margin: 0 0 16px;
+      color: var(--module-color);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .module-nodes {
+      position: relative;
+      display: grid;
+      gap: 12px;
+    }
+
+    .system-module.laser .module-nodes { grid-template-columns: 1fr; }
+    .system-module.tfln .module-nodes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .system-module.si .module-nodes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .module-nodes::before {
+      content: "";
+      position: absolute;
+      top: 23px;
+      right: 10%;
+      left: 10%;
+      height: 2px;
+      background: var(--module-color);
+      opacity: 0.35;
+    }
+
+    .node {
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+      animation: rise 360ms ease both;
+    }
+
+    .node:nth-child(2) { animation-delay: 45ms; }
+    .node:nth-child(3) { animation-delay: 90ms; }
+
+    .node-dot {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 13px;
+      border: 2px solid var(--module-color);
+      border-radius: 50%;
+      background: var(--panel);
+      color: var(--module-color);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .node-label {
+      min-height: 34px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .node-value {
+      margin-top: 5px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      margin-top: 25px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 19px 20px;
+      background: var(--panel);
+    }
+
+    .metric-name {
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric-value {
+      font-size: 20px;
+      font-weight: 720;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .formula {
+      margin-top: 22px;
+      padding: 18px 20px;
+      border-left: 3px solid var(--accent);
+      background: var(--accent-soft);
+      color: #294b3e;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      overflow-wrap: anywhere;
+    }
+
+    .error {
+      display: none;
+      margin-top: 18px;
+      padding: 12px 14px;
+      border-left: 3px solid var(--danger);
+      background: #fff1f0;
+      color: var(--danger);
+      font-size: 13px;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(7px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    @media (max-width: 1020px) {
+      .workspace { grid-template-columns: 320px minmax(0, 1fr); gap: 22px; }
+      .signal-map { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .app-shell { padding: 20px 16px 28px; }
+      header { align-items: flex-start; flex-direction: column; }
+      .assumption { text-align: left; }
+      .workspace { grid-template-columns: 1fr; }
+      .headline-result { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .signal-map { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header>
+      <div>
+        <p class="eyebrow">Optical Link Calculator</p>
+        <h1>TFLN Power Budget</h1>
+      </div>
+      <p class="assumption">Ideal MZM · Minimum-transmission bias · Symmetric Vpp drive · Peak-power model</p>
+    </header>
+
+    <div class="workspace">
+      <aside class="controls" aria-label="Calculation parameters">
+        <div class="mode-switch" role="tablist" aria-label="Calculation direction">
+          <button id="forwardMode" class="active" type="button" role="tab" aria-selected="true">Laser → PD</button>
+          <button id="reverseMode" type="button" role="tab" aria-selected="false">PD → Laser</button>
+        </div>
+
+        <div class="control-body">
+          <p class="section-label" id="sourceLabel">Laser power</p>
+          <div class="primary-input">
+            <input id="sourcePower" type="number" min="0" step="any" value="1" aria-labelledby="sourceLabel">
+            <select id="powerUnit" aria-label="Power unit">
+              <option value="W">W</option>
+              <option value="mW">mW</option>
+              <option value="uW">µW</option>
+              <option value="dBm">dBm</option>
+            </select>
+          </div>
+
+          <p class="section-label">Link parameters</p>
+          <div class="parameter-group laser">
+            <p class="parameter-group-title">Laser</p>
+            <div class="field">
+              <label for="loss1">Fiber–TFLN Loss (dB)</label>
+              <input id="loss1" type="number" min="0" step="0.1" value="5">
+            </div>
+          </div>
+
+          <div class="parameter-group tfln">
+            <p class="parameter-group-title">TFLN</p>
+            <div class="field">
+              <label for="channels">TFLN Modulator Channels</label>
+              <input id="channels" type="number" min="2" step="2" value="16">
+            </div>
+
+            <div class="field">
+              <label for="vpi">Modulator Vπ (V)</label>
+              <input id="vpi" type="number" min="0.000001" step="0.1" value="2.5">
+            </div>
+
+            <div class="field">
+              <label for="vpp">DAC Vpp (V)</label>
+              <input id="vpp" type="number" min="0" step="0.1" value="1">
+            </div>
+          </div>
+
+          <div class="parameter-group si">
+            <p class="parameter-group-title">Si</p>
+            <div class="field">
+              <label for="loss2">TFLN–Si Loss (dB)</label>
+              <input id="loss2" type="number" min="0" step="0.1" value="5">
+            </div>
+
+            <div class="field">
+              <label for="pdCount">PD Channels</label>
+              <input id="pdCount" type="number" min="1" step="1" value="8">
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <button id="resetButton" class="reset-button" type="button">Reset defaults</button>
+          <div id="error" class="error" role="alert"></div>
+        </div>
+      </aside>
+
+      <section class="results" aria-live="polite">
+        <div class="headline-result">
+          <div>
+            <p class="result-kicker" id="resultLabel">Peak power per PD</p>
+            <p class="result-value" id="resultValue">—</p>
+          </div>
+          <div class="result-dbm" id="resultDbm">—</div>
+        </div>
+
+        <div class="signal-map" aria-label="Optical power nodes grouped by system module">
+          <div class="system-module laser">
+            <p class="module-title">Laser</p>
+            <div class="module-nodes">
+              <div class="node">
+                <div class="node-dot">LASER</div>
+                <div class="node-label">Laser output</div>
+                <div class="node-value" id="nodeLaser">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="system-module tfln">
+            <p class="module-title">TFLN</p>
+            <div class="module-nodes">
+              <div class="node">
+                <div class="node-dot">L1</div>
+                <div class="node-label">After fiber–TFLN loss</div>
+                <div class="node-value" id="nodeLoss1">—</div>
+              </div>
+              <div class="node">
+                <div class="node-dot">÷ CH</div>
+                <div class="node-label">Per branch / modulator input</div>
+                <div class="node-value" id="nodeBranchIn">—</div>
+              </div>
+              <div class="node">
+                <div class="node-dot">MZM</div>
+                <div class="node-label">Modulator peak output</div>
+                <div class="node-value" id="nodeModOut">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="system-module si">
+            <p class="module-title">Si</p>
+            <div class="module-nodes">
+              <div class="node">
+                <div class="node-dot">L2</div>
+                <div class="node-label">PD array total input</div>
+                <div class="node-value" id="nodeArray">—</div>
+              </div>
+              <div class="node">
+                <div class="node-dot">PD</div>
+                <div class="node-label">Per PD</div>
+                <div class="node-value" id="nodePd">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-name">MZM peak transmission</div>
+            <div class="metric-value" id="metricTransmission">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">MZM peak equivalent loss</div>
+            <div class="metric-value" id="metricMzmLoss">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">Laser → single-PD total loss</div>
+            <div class="metric-value" id="metricTotalLoss">—</div>
+          </div>
+        </div>
+
+        <div class="formula" id="formula">—</div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const defaults = {
+      sourcePower: 1,
+      powerUnit: "W",
+      loss1: 5,
+      channels: 16,
+      vpi: 2.5,
+      vpp: 1,
+      loss2: 5,
+      pdCount: 8
+    };
+
+    let mode = "forward";
+
+    const ids = [
+      "sourcePower", "powerUnit", "loss1", "channels", "vpi", "vpp",
+      "loss2", "pdCount"
+    ];
+    const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+
+    function toMilliwatts(value, unit) {
+      if (unit === "W") return value * 1000;
+      if (unit === "uW") return value / 1000;
+      if (unit === "dBm") return 10 ** (value / 10);
+      return value;
+    }
+
+    function formatPower(mw) {
+      if (!Number.isFinite(mw) || mw < 0) return "—";
+      if (mw === 0) return "0 mW";
+      if (mw >= 1000) return `${formatNumber(mw / 1000)} W`;
+      if (mw >= 1) return `${formatNumber(mw)} mW`;
+      if (mw >= 0.001) return `${formatNumber(mw * 1000)} µW`;
+      return `${formatNumber(mw * 1e6)} nW`;
+    }
+
+    function formatDbm(mw) {
+      if (mw === 0) return "−∞ dBm";
+      if (!Number.isFinite(mw) || mw < 0) return "—";
+      return `${(10 * Math.log10(mw)).toFixed(2)} dBm`;
+    }
+
+    function formatNumber(value) {
+      if (value >= 10000 || value < 0.001) return value.toExponential(3);
+      return value.toLocaleString("en-US", { maximumSignificantDigits: 6 });
+    }
+
+    function readPositive(id, allowZero = true) {
+      const value = Number(el[id].value);
+      const valid = Number.isFinite(value) && (allowZero ? value >= 0 : value > 0);
+      if (!valid) throw new Error(`Enter a valid value for ${el[id].previousElementSibling?.textContent || id}`);
+      return value;
+    }
+
+    function readCount(id) {
+      const value = readPositive(id, false);
+      if (!Number.isInteger(value)) {
+        throw new Error(`${el[id].previousElementSibling?.textContent || id} must be an integer`);
+      }
+      return value;
+    }
+
+    function calculate() {
+      const error = document.getElementById("error");
+      try {
+        const sourceValue = Number(el.sourcePower.value);
+        if (!Number.isFinite(sourceValue) || (el.powerUnit.value !== "dBm" && sourceValue < 0)) {
+          throw new Error("Enter a valid power value");
+        }
+
+        const sourceMw = toMilliwatts(sourceValue, el.powerUnit.value);
+        const loss1 = readPositive("loss1");
+        const channels = readCount("channels");
+        if (channels % 2 !== 0) {
+          throw new Error("TFLN Modulator Channels must be even so PD Channels can equal half");
+        }
+        const vpi = readPositive("vpi", false);
+        const vpp = readPositive("vpp");
+        const loss2 = readPositive("loss2");
+        const pdCount = readCount("pdCount");
+
+        const t1 = 10 ** (-loss1 / 10);
+        const t2 = 10 ** (-loss2 / 10);
+        // Under symmetric drive around null, the first full-transmission point is
+        // reached when Vpp / 2 >= Vpi. This clamp keeps wide-swing inputs physical.
+        const peakElectricalTransmission = vpp >= 2 * vpi
+          ? 1
+          : Math.sin(Math.PI * vpp / (4 * vpi)) ** 2;
+        const tMod = peakElectricalTransmission;
+
+        if (tMod === 0 && sourceMw > 0) {
+          throw new Error("At Vpp = 0, the modulator remains at minimum transmission and cannot produce nonzero peak power");
+        }
+
+        let laserMw;
+        let afterLoss1Mw;
+        let branchInMw;
+        let modOutMw;
+        let arrayMw;
+        let pdMw;
+
+        if (mode === "forward") {
+          laserMw = sourceMw;
+          afterLoss1Mw = laserMw * t1;
+          branchInMw = afterLoss1Mw / channels;
+          modOutMw = branchInMw * tMod;
+          arrayMw = modOutMw * t2;
+          pdMw = arrayMw / pdCount;
+        } else {
+          pdMw = sourceMw;
+          arrayMw = pdMw * pdCount;
+          modOutMw = arrayMw / t2;
+          branchInMw = tMod === 0 ? 0 : modOutMw / tMod;
+          afterLoss1Mw = branchInMw * channels;
+          laserMw = afterLoss1Mw / t1;
+        }
+
+        const mzmLossDb = tMod > 0 ? -10 * Math.log10(tMod) : Infinity;
+        const totalTransmission = t1 * tMod * t2 / channels / pdCount;
+        const totalLossDb = totalTransmission > 0 ? -10 * Math.log10(totalTransmission) : Infinity;
+        const resultMw = mode === "forward" ? pdMw : laserMw;
+
+        document.getElementById("resultValue").textContent = formatPower(resultMw);
+        document.getElementById("resultDbm").textContent = formatDbm(resultMw);
+        document.getElementById("nodeLaser").textContent = formatPower(laserMw);
+        document.getElementById("nodeLoss1").textContent = formatPower(afterLoss1Mw);
+        document.getElementById("nodeBranchIn").textContent = formatPower(branchInMw);
+        document.getElementById("nodeModOut").textContent = formatPower(modOutMw);
+        document.getElementById("nodeArray").textContent = formatPower(arrayMw);
+        document.getElementById("nodePd").textContent = formatPower(pdMw);
+        document.getElementById("metricTransmission").textContent = `${(tMod * 100).toFixed(4)}%`;
+        document.getElementById("metricMzmLoss").textContent = Number.isFinite(mzmLossDb) ? `${mzmLossDb.toFixed(3)} dB` : "∞ dB";
+        document.getElementById("metricTotalLoss").textContent = Number.isFinite(totalLossDb) ? `${totalLossDb.toFixed(3)} dB` : "∞ dB";
+
+        const tExpression = vpp >= 2 * vpi
+          ? "1"
+          : `sin²(π × ${formatNumber(vpp)} / (4 × ${formatNumber(vpi)}))`;
+        document.getElementById("formula").textContent = mode === "forward"
+          ? `P_PD,peak = P_laser × 10^(−${formatNumber(loss1)}/10) ÷ ${formatNumber(channels)} × ${tExpression} × 10^(−${formatNumber(loss2)}/10) ÷ ${formatNumber(pdCount)}`
+          : `P_laser = P_PD,peak × ${formatNumber(pdCount)} × 10^(${formatNumber(loss2)}/10) ÷ ${tExpression} × ${formatNumber(channels)} × 10^(${formatNumber(loss1)}/10)`;
+
+        error.style.display = "none";
+      } catch (problem) {
+        error.textContent = problem.message;
+        error.style.display = "block";
+        document.getElementById("resultValue").textContent = "—";
+        document.getElementById("resultDbm").textContent = "—";
+      }
+    }
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      const forward = mode === "forward";
+      document.getElementById("forwardMode").classList.toggle("active", forward);
+      document.getElementById("reverseMode").classList.toggle("active", !forward);
+      document.getElementById("forwardMode").setAttribute("aria-selected", String(forward));
+      document.getElementById("reverseMode").setAttribute("aria-selected", String(!forward));
+      document.getElementById("sourceLabel").textContent = forward ? "Laser power" : "Peak power per PD";
+      document.getElementById("resultLabel").textContent = forward ? "Peak power per PD" : "Required laser power";
+      calculate();
+    }
+
+    ids
+      .filter(id => id !== "channels" && id !== "pdCount")
+      .forEach(id => el[id].addEventListener("input", calculate));
+
+    el.channels.addEventListener("input", () => {
+      const channels = Number(el.channels.value);
+      if (Number.isInteger(channels) && channels > 0 && channels % 2 === 0) {
+        el.pdCount.value = channels / 2;
+      }
+      calculate();
+    });
+
+    el.pdCount.addEventListener("input", () => {
+      const pdChannels = Number(el.pdCount.value);
+      if (Number.isInteger(pdChannels) && pdChannels > 0) {
+        el.channels.value = pdChannels * 2;
+      }
+      calculate();
+    });
+    el.powerUnit.addEventListener("change", () => {
+      if (el.powerUnit.value === "dBm") {
+        el.sourcePower.removeAttribute("min");
+      } else {
+        el.sourcePower.min = "0";
+      }
+      calculate();
+    });
+    document.getElementById("forwardMode").addEventListener("click", () => setMode("forward"));
+    document.getElementById("reverseMode").addEventListener("click", () => setMode("reverse"));
+    document.getElementById("resetButton").addEventListener("click", () => {
+      Object.entries(defaults).forEach(([id, value]) => { el[id].value = value; });
+      calculate();
+    });
+
+    calculate();
+  </script>
+</body>
+</html>
