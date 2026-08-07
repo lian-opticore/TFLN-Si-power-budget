@@ -355,9 +355,94 @@
       overflow-wrap: anywhere;
     }
 
+    .pd-distribution {
+      margin-top: 24px;
+      border-top: 3px solid var(--si);
+      background: var(--panel);
+    }
+
+    .pd-distribution-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 17px 18px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .pd-distribution-title {
+      margin: 0;
+      color: var(--si);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .pd-distribution-note {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .pd-table-wrap {
+      max-height: 340px;
+      overflow: auto;
+    }
+
+    .pd-table-head,
+    .pd-row {
+      display: grid;
+      grid-template-columns: 62px 80px 110px minmax(120px, 1fr) 90px;
+      gap: 12px;
+      align-items: center;
+      min-width: 560px;
+      padding: 10px 18px;
+    }
+
+    .pd-table-head {
+      position: sticky;
+      z-index: 2;
+      top: 0;
+      background: #f7f9fb;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .pd-row {
+      border-top: 1px solid #edf0ed;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pd-row:first-child { border-top: 0; }
+
+    .pd-index { color: var(--si); font-weight: 800; }
+
+    .pd-power-cell {
+      display: grid;
+      grid-template-columns: minmax(40px, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      font-weight: 700;
+    }
+
+    .pd-power-track {
+      height: 5px;
+      overflow: hidden;
+      border-radius: 3px;
+      background: #dbe6f2;
+    }
+
+    .pd-power-bar {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--si);
+    }
+
     .metrics {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 1px;
       margin-top: 25px;
       background: var(--line);
@@ -499,6 +584,11 @@
               <label for="pdCount">PD Channels</label>
               <input id="pdCount" type="number" min="1" step="1" value="8">
             </div>
+
+            <div class="field">
+              <label for="crossingLoss">Crossing Loss Lc (dB)</label>
+              <input id="crossingLoss" type="number" min="0" step="0.01" value="0">
+            </div>
           </div>
 
           <div class="divider"></div>
@@ -510,7 +600,7 @@
       <section class="results" aria-live="polite">
         <div class="headline-result">
           <div>
-            <p class="result-kicker" id="resultLabel">Peak power per PD</p>
+            <p class="result-kicker" id="resultLabel">PD peak power range (PD 1 → PD N)</p>
             <p class="result-value" id="resultValue">—</p>
           </div>
           <div class="result-dbm" id="resultDbm">—</div>
@@ -559,12 +649,29 @@
               </div>
               <div class="node">
                 <div class="node-dot">PD</div>
-                <div class="node-label">Per PD</div>
+                <div class="node-label">PD 1 → PD N</div>
                 <div class="node-value" id="nodePd">—</div>
               </div>
             </div>
           </div>
         </div>
+
+        <section class="pd-distribution" aria-labelledby="pdDistributionTitle">
+          <div class="pd-distribution-header">
+            <h2 class="pd-distribution-title" id="pdDistributionTitle">PD power distribution</h2>
+            <span class="pd-distribution-note">PD i crosses Lc^(i−1)</span>
+          </div>
+          <div class="pd-table-wrap">
+            <div class="pd-table-head" aria-hidden="true">
+              <span>PD</span>
+              <span>Crossing</span>
+              <span>Accum. loss</span>
+              <span>Peak power</span>
+              <span>dBm</span>
+            </div>
+            <div id="pdRows"></div>
+          </div>
+        </section>
 
         <div class="metrics">
           <div class="metric">
@@ -576,8 +683,12 @@
             <div class="metric-value" id="metricMzmLoss">—</div>
           </div>
           <div class="metric">
-            <div class="metric-name">Laser → single-PD total loss</div>
+            <div class="metric-name">Laser → worst-PD total loss</div>
             <div class="metric-value" id="metricTotalLoss">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">Worst-path crossing loss</div>
+            <div class="metric-value" id="metricCrossingLoss">—</div>
           </div>
         </div>
 
@@ -595,14 +706,15 @@
       vpi: 2.5,
       vpp: 1,
       loss2: 5,
-      pdCount: 8
+      pdCount: 8,
+      crossingLoss: 0
     };
 
     let mode = "forward";
 
     const ids = [
       "sourcePower", "powerUnit", "loss1", "channels", "vpi", "vpp",
-      "loss2", "pdCount"
+      "loss2", "pdCount", "crossingLoss"
     ];
     const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
 
@@ -629,6 +741,7 @@
     }
 
     function formatNumber(value) {
+      if (value === 0) return "0";
       if (value >= 10000 || value < 0.001) return value.toExponential(3);
       return value.toLocaleString("en-US", { maximumSignificantDigits: 6 });
     }
@@ -666,9 +779,12 @@
         const vpp = readPositive("vpp");
         const loss2 = readPositive("loss2");
         const pdCount = readCount("pdCount");
+        const crossingLoss = readPositive("crossingLoss");
 
         const t1 = 10 ** (-loss1 / 10);
         const t2 = 10 ** (-loss2 / 10);
+        const tCrossing = 10 ** (-crossingLoss / 10);
+        const worstCrossingTransmission = tCrossing ** (pdCount - 1);
         // Under symmetric drive around null, the first full-transmission point is
         // reached when Vpp / 2 >= Vpi. This clamp keeps wide-swing inputs physical.
         const peakElectricalTransmission = vpp >= 2 * vpi
@@ -685,7 +801,8 @@
         let branchInMw;
         let modOutMw;
         let arrayMw;
-        let pdMw;
+        let firstPdMw;
+        let lastPdMw;
 
         if (mode === "forward") {
           laserMw = sourceMw;
@@ -693,39 +810,69 @@
           branchInMw = afterLoss1Mw / channels;
           modOutMw = branchInMw * tMod;
           arrayMw = modOutMw * t2;
-          pdMw = arrayMw / pdCount;
+          firstPdMw = arrayMw / pdCount;
+          lastPdMw = firstPdMw * worstCrossingTransmission;
         } else {
-          pdMw = sourceMw;
-          arrayMw = pdMw * pdCount;
+          lastPdMw = sourceMw;
+          if (worstCrossingTransmission === 0 && lastPdMw > 0) {
+            throw new Error("The accumulated crossing loss is too large to calculate a finite laser power");
+          }
+          firstPdMw = lastPdMw === 0 ? 0 : lastPdMw / worstCrossingTransmission;
+          arrayMw = firstPdMw * pdCount;
           modOutMw = arrayMw / t2;
           branchInMw = tMod === 0 ? 0 : modOutMw / tMod;
           afterLoss1Mw = branchInMw * channels;
           laserMw = afterLoss1Mw / t1;
         }
 
-        const mzmLossDb = tMod > 0 ? -10 * Math.log10(tMod) : Infinity;
-        const totalTransmission = t1 * tMod * t2 / channels / pdCount;
-        const totalLossDb = totalTransmission > 0 ? -10 * Math.log10(totalTransmission) : Infinity;
-        const resultMw = mode === "forward" ? pdMw : laserMw;
+        const pdPowers = Array.from(
+          { length: pdCount },
+          (_, index) => firstPdMw * tCrossing ** index
+        );
 
-        document.getElementById("resultValue").textContent = formatPower(resultMw);
-        document.getElementById("resultDbm").textContent = formatDbm(resultMw);
+        const mzmLossDb = tMod > 0 ? -10 * Math.log10(tMod) : Infinity;
+        const totalTransmission = t1 * tMod * t2 / channels / pdCount * worstCrossingTransmission;
+        const totalLossDb = totalTransmission > 0 ? -10 * Math.log10(totalTransmission) : Infinity;
+        const worstCrossingLossDb = (pdCount - 1) * crossingLoss;
+
+        document.getElementById("resultValue").textContent = mode === "forward"
+          ? `${formatPower(firstPdMw)} → ${formatPower(lastPdMw)}`
+          : formatPower(laserMw);
+        document.getElementById("resultDbm").textContent = mode === "forward"
+          ? `${formatDbm(firstPdMw)} → ${formatDbm(lastPdMw)}`
+          : formatDbm(laserMw);
         document.getElementById("nodeLaser").textContent = formatPower(laserMw);
         document.getElementById("nodeLoss1").textContent = formatPower(afterLoss1Mw);
         document.getElementById("nodeBranchIn").textContent = formatPower(branchInMw);
         document.getElementById("nodeModOut").textContent = formatPower(modOutMw);
         document.getElementById("nodeArray").textContent = formatPower(arrayMw);
-        document.getElementById("nodePd").textContent = formatPower(pdMw);
+        document.getElementById("nodePd").textContent = `${formatPower(firstPdMw)} → ${formatPower(lastPdMw)}`;
         document.getElementById("metricTransmission").textContent = `${(tMod * 100).toFixed(4)}%`;
         document.getElementById("metricMzmLoss").textContent = Number.isFinite(mzmLossDb) ? `${mzmLossDb.toFixed(3)} dB` : "∞ dB";
         document.getElementById("metricTotalLoss").textContent = Number.isFinite(totalLossDb) ? `${totalLossDb.toFixed(3)} dB` : "∞ dB";
+        document.getElementById("metricCrossingLoss").textContent = `${formatNumber(worstCrossingLossDb)} dB`;
+
+        document.getElementById("pdRows").innerHTML = pdPowers.map((power, index) => {
+          const relativePower = firstPdMw > 0 ? power / firstPdMw * 100 : 0;
+          return `
+            <div class="pd-row">
+              <span class="pd-index">PD ${index + 1}</span>
+              <span>Lc^${index}</span>
+              <span>${formatNumber(index * crossingLoss)} dB</span>
+              <span class="pd-power-cell">
+                <span class="pd-power-track"><span class="pd-power-bar" style="width:${relativePower.toFixed(4)}%"></span></span>
+                <span>${formatPower(power)}</span>
+              </span>
+              <span>${formatDbm(power)}</span>
+            </div>`;
+        }).join("");
 
         const tExpression = vpp >= 2 * vpi
           ? "1"
           : `sin²(π × ${formatNumber(vpp)} / (4 × ${formatNumber(vpi)}))`;
         document.getElementById("formula").textContent = mode === "forward"
-          ? `P_PD,peak = P_laser × 10^(−${formatNumber(loss1)}/10) ÷ ${formatNumber(channels)} × ${tExpression} × 10^(−${formatNumber(loss2)}/10) ÷ ${formatNumber(pdCount)}`
-          : `P_laser = P_PD,peak × ${formatNumber(pdCount)} × 10^(${formatNumber(loss2)}/10) ÷ ${tExpression} × ${formatNumber(channels)} × 10^(${formatNumber(loss1)}/10)`;
+          ? `P_PD,i = P_laser × 10^(−${formatNumber(loss1)}/10) ÷ ${formatNumber(channels)} × ${tExpression} × 10^(−${formatNumber(loss2)}/10) ÷ ${formatNumber(pdCount)} × 10^(−(i−1) × ${formatNumber(crossingLoss)}/10)`
+          : `P_laser = P_PD,N × ${formatNumber(pdCount)} × 10^((${formatNumber(pdCount)}−1) × ${formatNumber(crossingLoss)}/10) × 10^(${formatNumber(loss2)}/10) ÷ ${tExpression} × ${formatNumber(channels)} × 10^(${formatNumber(loss1)}/10)`;
 
         error.style.display = "none";
       } catch (problem) {
@@ -733,6 +880,7 @@
         error.style.display = "block";
         document.getElementById("resultValue").textContent = "—";
         document.getElementById("resultDbm").textContent = "—";
+        document.getElementById("pdRows").innerHTML = "";
       }
     }
 
@@ -743,8 +891,8 @@
       document.getElementById("reverseMode").classList.toggle("active", !forward);
       document.getElementById("forwardMode").setAttribute("aria-selected", String(forward));
       document.getElementById("reverseMode").setAttribute("aria-selected", String(!forward));
-      document.getElementById("sourceLabel").textContent = forward ? "Laser power" : "Peak power per PD";
-      document.getElementById("resultLabel").textContent = forward ? "Peak power per PD" : "Required laser power";
+      document.getElementById("sourceLabel").textContent = forward ? "Laser power" : "Required peak power at last PD";
+      document.getElementById("resultLabel").textContent = forward ? "PD peak power range (PD 1 → PD N)" : "Required laser power";
       calculate();
     }
 
