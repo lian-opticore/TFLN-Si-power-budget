@@ -20,6 +20,8 @@
       --tfln-soft: #e8f5ef;
       --si: #356aa8;
       --si-soft: #edf4fc;
+      --integration: #a13f62;
+      --integration-soft: #fff0f5;
       --danger: #b42318;
       --shadow: 0 18px 50px rgba(22, 40, 30, 0.08);
     }
@@ -137,6 +139,12 @@
 
     .field { margin-bottom: 16px; }
 
+    .unit-input {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 82px;
+      gap: 7px;
+    }
+
     .parameter-group {
       --module-color: var(--accent);
       margin-bottom: 12px;
@@ -158,6 +166,12 @@
     .parameter-group.si {
       --module-color: var(--si);
       background: var(--si-soft);
+    }
+
+    .parameter-group.integration {
+      --module-color: var(--integration);
+      margin-top: 16px;
+      background: var(--integration-soft);
     }
 
     .parameter-group-title {
@@ -226,9 +240,11 @@
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
-      gap: 22px;
-      padding: 4px 0 25px;
+      gap: 16px;
+      padding: 2px 0 20px;
     }
+
+    .headline-result > div:first-child { min-width: 0; }
 
     .result-kicker {
       margin: 0 0 5px;
@@ -240,12 +256,17 @@
     .result-value {
       margin: 0;
       color: var(--accent);
-      font-size: clamp(34px, 5.5vw, 64px);
+      max-width: 100%;
+      overflow-x: auto;
+      font-size: clamp(28px, 4vw, 52px);
       line-height: 1;
       font-weight: 730;
       font-variant-numeric: tabular-nums;
-      overflow-wrap: anywhere;
+      white-space: nowrap;
+      scrollbar-width: none;
     }
+
+    .result-value::-webkit-scrollbar { display: none; }
 
     .result-dbm {
       flex: 0 0 auto;
@@ -253,6 +274,7 @@
       color: var(--muted);
       font-size: 16px;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     .signal-map {
@@ -391,10 +413,10 @@
     .pd-table-head,
     .pd-row {
       display: grid;
-      grid-template-columns: 62px 80px 110px minmax(120px, 1fr) 90px;
+      grid-template-columns: 62px 78px 96px minmax(120px, 1fr) 110px 120px;
       gap: 12px;
       align-items: center;
-      min-width: 560px;
+      min-width: 720px;
       padding: 10px 18px;
     }
 
@@ -440,6 +462,14 @@
       background: var(--si);
     }
 
+    .pd-voltage { color: var(--integration); font-weight: 750; }
+
+    .integration-metrics {
+      border-top: 3px solid var(--integration);
+    }
+
+    .integration-metrics .metric-value { color: var(--integration); }
+
     .metrics {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -472,14 +502,47 @@
 
     .formula {
       margin-top: 22px;
-      padding: 18px 20px;
+      padding: 16px 18px;
       border-left: 3px solid var(--accent);
       background: var(--accent-soft);
       color: #294b3e;
+    }
+
+    .formula-title {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .formula-line {
+      display: grid;
+      grid-template-columns: 92px minmax(max-content, 1fr);
+      gap: 12px;
+      align-items: baseline;
+      padding: 9px 0;
+      border-top: 1px solid rgba(8, 127, 91, 0.15);
+      overflow-x: auto;
       font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
       font-size: 13px;
-      line-height: 1.65;
-      overflow-wrap: anywhere;
+      line-height: 1.45;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .formula-name {
+      color: var(--accent);
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .formula-line sub,
+    .formula-line sup {
+      font-size: 0.75em;
+      line-height: 0;
     }
 
     .error {
@@ -591,6 +654,47 @@
             </div>
           </div>
 
+          <div class="parameter-group integration">
+            <p class="parameter-group-title">Integration</p>
+
+            <div class="field">
+              <label for="responsivity">Responsivity (A/W)</label>
+              <input id="responsivity" type="number" min="0" step="0.01" value="1">
+            </div>
+
+            <div class="field">
+              <label for="samplingRate">Sampling rate</label>
+              <div class="unit-input">
+                <input id="samplingRate" type="number" min="0.000001" step="any" value="1">
+                <select id="frequencyUnit" aria-label="Sampling rate unit">
+                  <option value="Hz">Hz</option>
+                  <option value="kHz">kHz</option>
+                  <option value="MHz">MHz</option>
+                  <option value="GHz" selected>GHz</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="integrationSteps">Integration steps</label>
+              <input id="integrationSteps" type="number" min="1" step="1" value="1">
+            </div>
+
+            <div class="field">
+              <label for="capacitance">Capacitance</label>
+              <div class="unit-input">
+                <input id="capacitance" type="number" min="0.000001" step="any" value="1">
+                <select id="capacitanceUnit" aria-label="Capacitance unit">
+                  <option value="F">F</option>
+                  <option value="uF">µF</option>
+                  <option value="nF">nF</option>
+                  <option value="pF" selected>pF</option>
+                  <option value="fF">fF</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           <div class="divider"></div>
           <button id="resetButton" class="reset-button" type="button">Reset defaults</button>
           <div id="error" class="error" role="alert"></div>
@@ -658,8 +762,8 @@
 
         <section class="pd-distribution" aria-labelledby="pdDistributionTitle">
           <div class="pd-distribution-header">
-            <h2 class="pd-distribution-title" id="pdDistributionTitle">PD power distribution</h2>
-            <span class="pd-distribution-note">PD i crosses Lc^(i−1)</span>
+            <h2 class="pd-distribution-title" id="pdDistributionTitle">PD power &amp; integration</h2>
+            <span class="pd-distribution-note">I = R·P · Vint = I·N/(fs·C)</span>
           </div>
           <div class="pd-table-wrap">
             <div class="pd-table-head" aria-hidden="true">
@@ -667,11 +771,31 @@
               <span>Crossing</span>
               <span>Accum. loss</span>
               <span>Peak power</span>
-              <span>dBm</span>
+              <span>Photocurrent</span>
+              <span>Integrated voltage</span>
             </div>
             <div id="pdRows"></div>
           </div>
         </section>
+
+        <div class="metrics integration-metrics" aria-label="Integration summary">
+          <div class="metric">
+            <div class="metric-name">Photocurrent range</div>
+            <div class="metric-value" id="metricCurrentRange">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">Integrated voltage range</div>
+            <div class="metric-value" id="metricVoltageRange">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">Total integration time</div>
+            <div class="metric-value" id="metricIntegrationTime">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">Integration capacitance</div>
+            <div class="metric-value" id="metricCapacitance">—</div>
+          </div>
+        </div>
 
         <div class="metrics">
           <div class="metric">
@@ -707,14 +831,21 @@
       vpp: 1,
       loss2: 5,
       pdCount: 8,
-      crossingLoss: 0
+      crossingLoss: 0,
+      responsivity: 1,
+      samplingRate: 1,
+      frequencyUnit: "GHz",
+      integrationSteps: 1,
+      capacitance: 1,
+      capacitanceUnit: "pF"
     };
 
     let mode = "forward";
 
     const ids = [
       "sourcePower", "powerUnit", "loss1", "channels", "vpi", "vpp",
-      "loss2", "pdCount", "crossingLoss"
+      "loss2", "pdCount", "crossingLoss", "responsivity", "samplingRate",
+      "frequencyUnit", "integrationSteps", "capacitance", "capacitanceUnit"
     ];
     const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
 
@@ -738,6 +869,76 @@
       if (mw === 0) return "−∞ dBm";
       if (!Number.isFinite(mw) || mw < 0) return "—";
       return `${(10 * Math.log10(mw)).toFixed(2)} dBm`;
+    }
+
+    function valuesMatch(first, last) {
+      return Math.abs(first - last) <= Math.max(Math.abs(first), Math.abs(last), 1) * 1e-12;
+    }
+
+    function formatPowerRange(firstMw, lastMw) {
+      if (valuesMatch(firstMw, lastMw)) return formatPower(firstMw);
+      const reference = Math.max(firstMw, lastMw);
+      let scale;
+      let unit;
+      if (reference >= 1000) {
+        scale = 1 / 1000;
+        unit = "W";
+      } else if (reference >= 1) {
+        scale = 1;
+        unit = "mW";
+      } else if (reference >= 0.001) {
+        scale = 1000;
+        unit = "µW";
+      } else {
+        scale = 1e6;
+        unit = "nW";
+      }
+      return `${formatNumber(firstMw * scale)} → ${formatNumber(lastMw * scale)} ${unit}`;
+    }
+
+    function formatDbmRange(firstMw, lastMw) {
+      if (valuesMatch(firstMw, lastMw)) return formatDbm(firstMw);
+      const first = firstMw === 0 ? "−∞" : (10 * Math.log10(firstMw)).toFixed(2);
+      const last = lastMw === 0 ? "−∞" : (10 * Math.log10(lastMw)).toFixed(2);
+      return `${first} → ${last} dBm`;
+    }
+
+    function formatCurrent(amps) {
+      if (!Number.isFinite(amps) || amps < 0) return "—";
+      if (amps === 0) return "0 A";
+      if (amps >= 1) return `${formatNumber(amps)} A`;
+      if (amps >= 1e-3) return `${formatNumber(amps * 1e3)} mA`;
+      if (amps >= 1e-6) return `${formatNumber(amps * 1e6)} µA`;
+      if (amps >= 1e-9) return `${formatNumber(amps * 1e9)} nA`;
+      return `${formatNumber(amps * 1e12)} pA`;
+    }
+
+    function formatVoltage(volts) {
+      if (!Number.isFinite(volts) || volts < 0) return "—";
+      if (volts === 0) return "0 V";
+      if (volts >= 1) return `${formatNumber(volts)} V`;
+      if (volts >= 1e-3) return `${formatNumber(volts * 1e3)} mV`;
+      if (volts >= 1e-6) return `${formatNumber(volts * 1e6)} µV`;
+      if (volts >= 1e-9) return `${formatNumber(volts * 1e9)} nV`;
+      return `${formatNumber(volts * 1e12)} pV`;
+    }
+
+    function frequencyToHertz(value, unit) {
+      return value * ({ Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9 }[unit]);
+    }
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) return "—";
+      if (seconds === 0) return "0 s";
+      if (seconds >= 1) return `${formatNumber(seconds)} s`;
+      if (seconds >= 1e-3) return `${formatNumber(seconds * 1e3)} ms`;
+      if (seconds >= 1e-6) return `${formatNumber(seconds * 1e6)} µs`;
+      if (seconds >= 1e-9) return `${formatNumber(seconds * 1e9)} ns`;
+      return `${formatNumber(seconds * 1e12)} ps`;
+    }
+
+    function capacitanceToFarads(value, unit) {
+      return value * ({ F: 1, uF: 1e-6, nF: 1e-9, pF: 1e-12, fF: 1e-15 }[unit]);
     }
 
     function formatNumber(value) {
@@ -780,6 +981,13 @@
         const loss2 = readPositive("loss2");
         const pdCount = readCount("pdCount");
         const crossingLoss = readPositive("crossingLoss");
+        const responsivity = readPositive("responsivity");
+        const samplingRate = readPositive("samplingRate", false);
+        const integrationSteps = readCount("integrationSteps");
+        const capacitance = readPositive("capacitance", false);
+        const samplingFrequencyHz = frequencyToHertz(samplingRate, el.frequencyUnit.value);
+        const integrationSeconds = integrationSteps / samplingFrequencyHz;
+        const capacitanceFarads = capacitanceToFarads(capacitance, el.capacitanceUnit.value);
 
         const t1 = 10 ** (-loss1 / 10);
         const t2 = 10 ** (-loss2 / 10);
@@ -829,6 +1037,8 @@
           { length: pdCount },
           (_, index) => firstPdMw * tCrossing ** index
         );
+        const pdCurrents = pdPowers.map(powerMw => responsivity * powerMw / 1000);
+        const integratedVoltages = pdCurrents.map(current => current * integrationSeconds / capacitanceFarads);
 
         const mzmLossDb = tMod > 0 ? -10 * Math.log10(tMod) : Infinity;
         const totalTransmission = t1 * tMod * t2 / channels / pdCount * worstCrossingTransmission;
@@ -836,21 +1046,25 @@
         const worstCrossingLossDb = (pdCount - 1) * crossingLoss;
 
         document.getElementById("resultValue").textContent = mode === "forward"
-          ? `${formatPower(firstPdMw)} → ${formatPower(lastPdMw)}`
+          ? formatPowerRange(firstPdMw, lastPdMw)
           : formatPower(laserMw);
         document.getElementById("resultDbm").textContent = mode === "forward"
-          ? `${formatDbm(firstPdMw)} → ${formatDbm(lastPdMw)}`
+          ? formatDbmRange(firstPdMw, lastPdMw)
           : formatDbm(laserMw);
         document.getElementById("nodeLaser").textContent = formatPower(laserMw);
         document.getElementById("nodeLoss1").textContent = formatPower(afterLoss1Mw);
         document.getElementById("nodeBranchIn").textContent = formatPower(branchInMw);
         document.getElementById("nodeModOut").textContent = formatPower(modOutMw);
         document.getElementById("nodeArray").textContent = formatPower(arrayMw);
-        document.getElementById("nodePd").textContent = `${formatPower(firstPdMw)} → ${formatPower(lastPdMw)}`;
+        document.getElementById("nodePd").textContent = formatPowerRange(firstPdMw, lastPdMw);
         document.getElementById("metricTransmission").textContent = `${(tMod * 100).toFixed(4)}%`;
         document.getElementById("metricMzmLoss").textContent = Number.isFinite(mzmLossDb) ? `${mzmLossDb.toFixed(3)} dB` : "∞ dB";
         document.getElementById("metricTotalLoss").textContent = Number.isFinite(totalLossDb) ? `${totalLossDb.toFixed(3)} dB` : "∞ dB";
         document.getElementById("metricCrossingLoss").textContent = `${formatNumber(worstCrossingLossDb)} dB`;
+        document.getElementById("metricCurrentRange").textContent = `${formatCurrent(pdCurrents[0])} → ${formatCurrent(pdCurrents[pdCurrents.length - 1])}`;
+        document.getElementById("metricVoltageRange").textContent = `${formatVoltage(integratedVoltages[0])} → ${formatVoltage(integratedVoltages[integratedVoltages.length - 1])}`;
+        document.getElementById("metricIntegrationTime").textContent = formatTime(integrationSeconds);
+        document.getElementById("metricCapacitance").textContent = `${formatNumber(capacitance)} ${el.capacitanceUnit.value}`;
 
         document.getElementById("pdRows").innerHTML = pdPowers.map((power, index) => {
           const relativePower = firstPdMw > 0 ? power / firstPdMw * 100 : 0;
@@ -863,16 +1077,22 @@
                 <span class="pd-power-track"><span class="pd-power-bar" style="width:${relativePower.toFixed(4)}%"></span></span>
                 <span>${formatPower(power)}</span>
               </span>
-              <span>${formatDbm(power)}</span>
+              <span>${formatCurrent(pdCurrents[index])}</span>
+              <span class="pd-voltage">${formatVoltage(integratedVoltages[index])}</span>
             </div>`;
         }).join("");
 
-        const tExpression = vpp >= 2 * vpi
-          ? "1"
-          : `sin²(π × ${formatNumber(vpp)} / (4 × ${formatNumber(vpi)}))`;
-        document.getElementById("formula").textContent = mode === "forward"
-          ? `P_PD,i = P_laser × 10^(−${formatNumber(loss1)}/10) ÷ ${formatNumber(channels)} × ${tExpression} × 10^(−${formatNumber(loss2)}/10) ÷ ${formatNumber(pdCount)} × 10^(−(i−1) × ${formatNumber(crossingLoss)}/10)`
-          : `P_laser = P_PD,N × ${formatNumber(pdCount)} × 10^((${formatNumber(pdCount)}−1) × ${formatNumber(crossingLoss)}/10) × 10^(${formatNumber(loss2)}/10) ÷ ${tExpression} × ${formatNumber(channels)} × 10^(${formatNumber(loss1)}/10)`;
+        const powerFormula = mode === "forward"
+          ? `P<sub>PD,i</sub> = P<sub>laser</sub> × 10<sup>−L<sub>Fiber–TFLN</sub>/10</sup> ÷ N<sub>MZM</sub> × T<sub>MZM</sub> × 10<sup>−L<sub>TFLN–Si</sub>/10</sup> ÷ N<sub>PD</sub> × 10<sup>−(i−1)L<sub>c</sub>/10</sup>`
+          : `P<sub>laser</sub> = P<sub>PD,N</sub> × N<sub>PD</sub> × 10<sup>(N<sub>PD</sub>−1)L<sub>c</sub>/10</sup> × 10<sup>L<sub>TFLN–Si</sub>/10</sup> ÷ T<sub>MZM</sub> × N<sub>MZM</sub> × 10<sup>L<sub>Fiber–TFLN</sub>/10</sup>`;
+
+        document.getElementById("formula").innerHTML = `
+          <p class="formula-title">Equations</p>
+          <div class="formula-line"><span class="formula-name">MZM peak</span><span>T<sub>MZM</sub> = sin²(πV<sub>pp</sub> ÷ 4V<sub>π</sub>), capped at 1</span></div>
+          <div class="formula-line"><span class="formula-name">Optical</span><span>${powerFormula}</span></div>
+          <div class="formula-line"><span class="formula-name">Current</span><span>I<sub>PD,i</sub> = R × P<sub>PD,i</sub></span></div>
+          <div class="formula-line"><span class="formula-name">Int. time</span><span>t<sub>int</sub> = N<sub>steps</sub> ÷ f<sub>s</sub></span></div>
+          <div class="formula-line"><span class="formula-name">Voltage</span><span>V<sub>int,i</sub> = I<sub>PD,i</sub> × t<sub>int</sub> ÷ C = I<sub>PD,i</sub> × N<sub>steps</sub> ÷ (f<sub>s</sub> × C)</span></div>`;
 
         error.style.display = "none";
       } catch (problem) {
@@ -923,6 +1143,8 @@
       }
       calculate();
     });
+    el.frequencyUnit.addEventListener("change", calculate);
+    el.capacitanceUnit.addEventListener("change", calculate);
     document.getElementById("forwardMode").addEventListener("click", () => setMode("forward"));
     document.getElementById("reverseMode").addEventListener("click", () => setMode("reverse"));
     document.getElementById("resetButton").addEventListener("click", () => {
